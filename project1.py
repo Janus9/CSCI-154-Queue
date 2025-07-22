@@ -143,20 +143,3 @@ loop()
 reset()
 
 root.mainloop()
-
-# team name ideas
-
-# team funny
-# stupid idiot team
-# team sigma
-# gods chosen people
-# team minecraft
-# ultrawinners
-# ultralosers
-# team 5
-# team 7
-# VEVBTSBVTFRSQUNPT0w=
-# asldfhphpu
-# team "Five"
-# team chatgpt
-# johnny simulation and the simulation guys
