@@ -5,6 +5,8 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 
+# this the project 1 I made like weeks or something ago I dont know why josh decided to remake it smh -josh
+
 running = False
 people = 0
 plot_length = 120
