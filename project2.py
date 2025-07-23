@@ -1,16 +1,36 @@
 import tkinter as tk
 import numpy as np
+import os
+import datetime
+
+# ok so what im thinking for how we make the project extra is that we simulate whether you can survive off of gambling so we're gonna simulate the actions of a person and see if they starve to death or not -josh
+
+class Simulation:
+    def __init__(self):
+        self.money = 110
+        self.debt = 0
+        self.day = 1
+        self.hour = 0
+        self.hunger = 1.0
+        self.energy = 1.0
+
+current_simulation = None
 
 root = tk.Tk()
 root.title("LETS GO GAMBLING!!!")
-root.geometry("400x500")
+root.geometry("400x800")
 
 label = tk.Label(root, text="Welcome to the Gambling Simulator!", font=("Times New Roman", 14))
-label.pack(pady=60)
 
-console_log = tk.Text(root, height=10, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
-console_log.pack(pady=10)
-console_log.config(state=tk.DISABLED)
+output_label = tk.Label(root, text="", font=("Times New Roman", 12))
+
+console_log = tk.Text(root, height=20, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
+
+def disable_console_input(event):
+    return "break"
+
+console_log.bind("<Key>", disable_console_input)
+console_log.bind("<Button-1>", disable_console_input)
 
 console_messages = []
 
@@ -28,7 +48,7 @@ def redraw_console_log():
     console_log.see(tk.END)
     console_log.config(state=tk.DISABLED)
 
-def add_log_message(msg, color="black"):
+def add_log_message(msg, color="white"):
     if console_messages and console_messages[-1]['text'] == msg and console_messages[-1]['color'] == color:
         console_messages[-1]['count'] += 1
     else:
@@ -89,8 +109,77 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000):
 
     return prize_money
 
-button = tk.Button(root, text="Lets go gambling!", font=("Times New Roman", 12), command=action_go_gambling)
-button.pack(pady=10)
+status_box = tk.Text(root, height=10, width=45, font=("Courier New", 12), bg="#ffffff", fg="black", insertbackground="white")
+
+def disable_status_input(event):
+    return "break"
+
+status_box.bind("<Key>", disable_status_input)
+status_box.bind("<Button-1>", disable_status_input)
+
+def redraw_status_box():
+    status_box.config(state=tk.NORMAL)
+    status_box.delete(1.0, tk.END)
+    status_box.config(state=tk.DISABLED)
+
+def export_log():
+    if not os.path.exists("Logs"):
+        os.makedirs("Logs")
+    now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    filename = f"Logs/log_{now}.txt"
+    log_text = console_log.get("1.0", tk.END).strip()
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(log_text)
+    output_label.config(text="log exported")
+
+# Buttons
+button_frame = tk.Frame(root)
+generate_btn = tk.Button(button_frame, text="Generate Person", font=("Times New Roman", 12))
+load_btn = tk.Button(button_frame, text="Load Person", font=("Times New Roman", 12))
+start_btn = tk.Button(button_frame, text="Run Simulation", font=("Times New Roman", 12))
+export_frame = tk.Frame(root)
+export_log_btn = tk.Button(export_frame, text="Export Log", font=("Times New Roman", 12), command=export_log)
+export_person_btn = tk.Button(export_frame, text="Export Person", font=("Times New Roman", 12))
+
+def run_simulation():
+    global current_simulation
+    # Disable all buttons
+    generate_btn.config(state=tk.DISABLED)
+    load_btn.config(state=tk.DISABLED)
+    start_btn.config(state=tk.DISABLED)
+    export_log_btn.config(state=tk.DISABLED)
+    export_person_btn.config(state=tk.DISABLED)
+
+    current_simulation = Simulation()
+    clear_log()
+    output_label.config(text="simulation started")
+    add_log_message("Hello world!")
+    action_go_gambling(1,3000000)
+    redraw_status_box()
+    
+
+    # End the simulation
+    del current_simulation
+    generate_btn.config(state=tk.NORMAL)
+    load_btn.config(state=tk.NORMAL)
+    start_btn.config(state=tk.NORMAL)
+    export_log_btn.config(state=tk.NORMAL)
+    export_person_btn.config(state=tk.NORMAL)
+
+start_btn.config(command=run_simulation)
+
+# --- PACK ALL WIDGETS AT THE BOTTOM ---
+label.pack(pady=60)
+button_frame.pack(pady=5)
+generate_btn.pack(side=tk.LEFT, padx=5)
+load_btn.pack(side=tk.LEFT, padx=5)
+start_btn.pack(side=tk.LEFT, padx=5)
+export_frame.pack(pady=5)
+export_log_btn.pack(side=tk.LEFT, padx=5)
+export_person_btn.pack(side=tk.LEFT, padx=5)
+output_label.pack(pady=5)
+status_box.pack(pady=10)
+console_log.pack(pady=10)
 
 
 root.mainloop()
