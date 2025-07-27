@@ -7,6 +7,8 @@ import datetime
 
 class Simulation:
     def __init__(self):
+        self.config_interest_rate = 0.005
+
         self.money = 110
         self.debt = 0
         self.day = 1
@@ -59,6 +61,13 @@ def clear_log():
     console_messages.clear()
     redraw_console_log()
 
+def tksleep(t):
+    ms = int(t*1000)
+    root = tk._get_default_root('sleep')
+    var = tk.IntVar(root)
+    root.after(ms, var.set, 1)
+    root.wait_variable(var)
+
 # why did I make this an array and not a dictionary? -josh
 # 0 - # combinations
 # 1 - prize offset
@@ -78,7 +87,7 @@ outcomes_chart = [
     [1, 0, 1, 0.000000024, "ULTRA MEGA GRAND PRIZE!!!!!!!"],
 ]
 
-def action_go_gambling(tickets = 1, grand_prize = 3000000):
+def action_go_gambling(tickets = 1, grand_prize = 3000000, ticket_cost = 5):
 
     prize_money = 0
     odds_chart = [row[0] for row in outcomes_chart]
@@ -86,6 +95,7 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000):
     
     outcomes = []
     for i in range(tickets):
+        prize_money -= ticket_cost
         if total_outcomes <= 0:
             break
         r = np.random.randint(0, total_outcomes)
@@ -118,8 +128,11 @@ status_box.bind("<Key>", disable_status_input)
 status_box.bind("<Button-1>", disable_status_input)
 
 def redraw_status_box():
+    global current_simulation
     status_box.config(state=tk.NORMAL)
     status_box.delete(1.0, tk.END)
+    status_box.insert(tk.END, f"Day {current_simulation.day} {current_simulation.hour}h" + "\n")
+    status_box.insert(tk.END, f"${current_simulation.money}" + "\n")
     status_box.config(state=tk.DISABLED)
 
 def export_log():
@@ -152,10 +165,32 @@ def run_simulation():
 
     current_simulation = Simulation()
     clear_log()
-    output_label.config(text="simulation started")
+    add_log_message(f"Day {current_simulation.day}")
     add_log_message("Hello world!")
-    action_go_gambling(1,3000000)
-    redraw_status_box()
+    
+    
+    while current_simulation.day < 30:
+        current_simulation.hour += 1
+        if current_simulation.hour == 24:
+            current_simulation.hour = 0
+            current_simulation.day += 1
+            jackpot = np.floor(np.max([np.random.normal(loc=15000000,scale=10000000,size=(1))[0],7000000]))
+            tickets = int(np.floor(np.max([np.random.normal(loc=5,scale=5,size=(1))[0],0])))
+            add_log_message(f"Lets go gambling!", "yellow")
+            add_log_message(f"The jackpot is ${jackpot}. You've decided to buy {tickets} tickets.", "yellow")
+            winnings = action_go_gambling(tickets,jackpot,5)
+            current_simulation.money += winnings
+            add_log_message(f"You won ${winnings}!", "yellow")
+            if current_simulation.money < 0:
+                interest = current_simulation.money * current_simulation.config_interest_rate
+                add_log_message(f"Your loan gained ${interest} in interest!", "yellow")
+                current_simulation.money += interest
+
+            add_log_message(f"Day {current_simulation.day}", "magenta")
+        
+        redraw_status_box()
+        tksleep(0.01)
+        
     
 
     # End the simulation
@@ -171,12 +206,12 @@ start_btn.config(command=run_simulation)
 # --- PACK ALL WIDGETS AT THE BOTTOM ---
 label.pack(pady=60)
 button_frame.pack(pady=5)
-generate_btn.pack(side=tk.LEFT, padx=5)
-load_btn.pack(side=tk.LEFT, padx=5)
+#generate_btn.pack(side=tk.LEFT, padx=5)
+#load_btn.pack(side=tk.LEFT, padx=5)
 start_btn.pack(side=tk.LEFT, padx=5)
 export_frame.pack(pady=5)
 export_log_btn.pack(side=tk.LEFT, padx=5)
-export_person_btn.pack(side=tk.LEFT, padx=5)
+#export_person_btn.pack(side=tk.LEFT, padx=5)
 output_label.pack(pady=5)
 status_box.pack(pady=10)
 console_log.pack(pady=10)
