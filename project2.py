@@ -8,6 +8,8 @@ import datetime
 class Simulation:
     def __init__(self):
         self.config_interest_rate = 0.005
+        self.config_tickets_mean = 5
+        self.config_tickets_scale = 5
 
         self.money = 110.0
         self.debt = 0.0
@@ -35,7 +37,7 @@ label = tk.Label(root, text="Welcome to the Gambling Simulator!", font=("Times N
 
 output_label = tk.Label(root, text="", font=("Times New Roman", 12))
 
-console_log = tk.Text(root, height=20, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
+console_log = tk.Text(root, height=30, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
 
 def disable_console_input(event):
     return "break"
@@ -107,7 +109,7 @@ def action_work(sim: Simulation):
     add_log_message(f"You did some doordash deliveries and made ${earnings}!")
     sim.money += earnings
     sim.stat_money_earned_by_working += earnings
-    taxes = earnings * 0.037 # data for average income tax sourced from my good friend chatgpt
+    taxes = earnings * 0.09 # data for average income/payroll tax sourced from my good friend chatgpt
     add_log_message(f"You paid the working tax and lost ${taxes}")
     sim.money -= taxes
     sim.stat_stolen_from -= taxes
@@ -230,7 +232,7 @@ def do_action():
             action[1](current_simulation)
             break
 
-status_box = tk.Text(root, height=10, width=45, font=("Courier New", 12), bg="#ffffff", fg="black", insertbackground="white")
+status_box = tk.Text(root, height=15, width=45, font=("Courier New", 12), bg="#ffffff", fg="black", insertbackground="white")
 
 def disable_status_input(event):
     return "break"
@@ -273,7 +275,7 @@ generate_btn = tk.Button(button_frame, text="Generate Person", font=("Times New 
 load_btn = tk.Button(button_frame, text="Load Person", font=("Times New Roman", 12))
 start_btn = tk.Button(button_frame, text="Run Simulation", font=("Times New Roman", 12))
 export_frame = tk.Frame(root)
-export_log_btn = tk.Button(export_frame, text="Export Log", font=("Times New Roman", 12), command=export_log)
+export_log_btn = tk.Button(button_frame, text="Export Log", font=("Times New Roman", 12), command=export_log)
 export_person_btn = tk.Button(export_frame, text="Export Person", font=("Times New Roman", 12))
 
 def run_simulation():
@@ -310,7 +312,7 @@ def run_simulation():
             current_simulation.day += 1
             #lets go gambling!
             jackpot = np.floor(np.max([np.random.normal(loc=15000000,scale=10000000,size=(1))[0],7000000]))
-            tickets = int(np.floor(np.max([np.random.normal(loc=5,scale=5,size=(1))[0],0])))
+            tickets = int(np.floor(np.max([np.random.normal(loc=current_simulation.config_tickets_mean,scale=current_simulation.config_tickets_scale,size=(1))[0],0])))
             ticketcost = tickets * 5
             add_log_message(f"[[[Lets go gambling!]]]", "yellow")
             add_log_message(f"The jackpot is ${jackpot}. You've decided to buy {tickets} tickets for ${ticketcost}.", "yellow")
@@ -348,17 +350,16 @@ def run_simulation():
 start_btn.config(command=run_simulation)
 
 # --- PACK ALL WIDGETS AT THE BOTTOM ---
-label.pack(pady=60)
+label.pack(pady=5)
 button_frame.pack(pady=5)
 #generate_btn.pack(side=tk.LEFT, padx=5)
 #load_btn.pack(side=tk.LEFT, padx=5)
-start_btn.pack(side=tk.LEFT, padx=5)
-export_frame.pack(pady=5)
 export_log_btn.pack(side=tk.LEFT, padx=5)
+start_btn.pack(side=tk.LEFT, padx=5)
 #export_person_btn.pack(side=tk.LEFT, padx=5)
-output_label.pack(pady=5)
-status_box.pack(pady=10)
-console_log.pack(pady=10)
+output_label.pack(pady=0)
+status_box.pack(pady=0)
+console_log.pack(pady=0)
 
 
 root.mainloop()
