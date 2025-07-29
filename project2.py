@@ -5,10 +5,12 @@ import datetime
 
 # ok so what im thinking for how we make the project extra is that we simulate whether you can survive off of gambling so we're gonna simulate the actions of a person and see if they starve to death or not -josh
 
+you_lose = False
+
 class Simulation:
     def __init__(self):
         self.config_interest_rate = 0.005
-        self.config_tickets_mean = 5
+        self.config_tickets_mean = 50
         self.config_tickets_scale = 5
 
         self.money = 110.0
@@ -115,6 +117,11 @@ def action_work(sim: Simulation):
     sim.stat_stolen_from -= taxes
 
 def action_steal_low_risk(sim: Simulation):
+    global you_lose
+    if np.random.rand() > 0.85:
+        you_lose = True
+        add_log_message(f"You tried to rob someone but they shot you in the face. YOU DIED", "red")
+        return
     rand = np.random.rand()
     earnings = 0
     if rand < 0.3:
@@ -130,6 +137,11 @@ def action_steal_low_risk(sim: Simulation):
     sim.stat_money_stolen += earnings
 
 def action_steal_high_risk(sim: Simulation):
+    global you_lose
+    if np.random.rand() > 0.01:
+        you_lose = True
+        add_log_message(f"You tried to commit a robbery with a deadly weapon and were arrested. GAME OVER", "red")
+        return
     rand = np.random.rand()
     earnings = 0
     if rand < 0.4:
@@ -211,11 +223,11 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000):
 actions = [
     [lambda sim: 1.0, action_do_nothing],
     [lambda sim: 7.0-sim.food, action_buy_food],
-    [lambda sim: 1000 if sim.hunger <= 0.66 and sim.food > 0 else 0, action_eat_food],
+    [lambda sim: 100 if sim.hunger <= 0.66 and sim.food > 0 else 0, action_eat_food],
     [lambda sim: np.max([0,(sim.energy-0.7) * -400]), action_sleep],
     [lambda sim: 0.5 + np.max([0,sim.money * -1]), action_work],
-    [lambda sim: np.max([0,(sim.money+550) * -0.5]), action_steal_low_risk],
-    [lambda sim: np.max([0,(sim.money+2000) * -0.25]), action_steal_high_risk],
+    [lambda sim: np.max([0,(sim.money) * -0.5]), action_steal_low_risk],
+    [lambda sim: np.max([0,(sim.money+1000) * -0.25]), action_steal_high_risk],
 ]
 
 def do_action():
@@ -280,6 +292,8 @@ export_person_btn = tk.Button(export_frame, text="Export Person", font=("Times N
 
 def run_simulation():
     global current_simulation
+    global you_lose
+    you_lose = False
     # Disable all buttons
     generate_btn.config(state=tk.DISABLED)
     load_btn.config(state=tk.DISABLED)
@@ -293,13 +307,11 @@ def run_simulation():
     add_log_message("Hello world!")
     
     
-    while current_simulation.day < 30:
+    while current_simulation.day < 30 and you_lose == False:
         current_simulation.hour += 1
         # lets lose some stats!
         current_simulation.energy -= 0.04
         current_simulation.hunger -= 0.04
-        # do your hourly action
-        do_action()
         # it's been a day?
         if current_simulation.hour == 24:
             #inflation
@@ -333,6 +345,16 @@ def run_simulation():
                 current_simulation.money += interest
 
             add_log_message(f"[[[Day {current_simulation.day}]]]", "magenta")
+        
+        # do your hourly action
+        do_action()
+        # potentially die
+        if current_simulation.hunger < -4.00:
+            you_lose = True
+            add_log_message(f"You died of starvation", "red")
+        if current_simulation.energy < -4.00:
+            you_lose = True
+            add_log_message(f"You died of exhaustion", "red")
         
         redraw_status_box()
         tksleep(0.01)
