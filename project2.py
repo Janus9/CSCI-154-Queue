@@ -9,12 +9,21 @@ class Simulation:
     def __init__(self):
         self.config_interest_rate = 0.005
 
-        self.money = 110
-        self.debt = 0
+        self.money = 110.0
+        self.debt = 0.0
         self.day = 1
         self.hour = 0
         self.hunger = 1.0
         self.energy = 1.0
+        self.food = 1.0
+        self.hunger = 1.0
+        self.energy = 1.0
+        
+        self.stat_money_earned_by_gambling = 0.0
+        self.stat_money_earned_by_working = 0.0
+        self.stat_money_stolen = 0.0
+        self.stat_expenditures = 0.0
+        self.stat_stolen_from = 0.0
 
 current_simulation = None
 
@@ -87,7 +96,83 @@ outcomes_chart = [
     [1, 0, 1, 0.000000024, "ULTRA MEGA GRAND PRIZE!!!!!!!"],
 ]
 
-def action_go_gambling(tickets = 1, grand_prize = 3000000, ticket_cost = 5):
+def action_eat_food(sim: Simulation):
+    amnt_to_eat = np.min([1.0 - sim.hunger, sim.food])
+    sim.hunger += amnt_to_eat
+    sim.food -= amnt_to_eat
+    add_log_message(f"You decided to eat {amnt_to_eat} food units of food")
+
+def action_work(sim: Simulation):
+    earnings = int(np.floor(np.max([np.random.normal(loc=16,scale=3,size=(1))[0],0])))
+    add_log_message(f"You did some doordash deliveries and made ${earnings}!")
+    sim.money += earnings
+    sim.stat_money_earned_by_working += earnings
+    taxes = earnings * 0.037 # data for average income tax sourced from my good friend chatgpt
+    add_log_message(f"You paid the working tax and lost ${taxes}")
+    sim.money -= taxes
+    sim.stat_stolen_from -= taxes
+
+def action_steal_low_risk(sim: Simulation):
+    rand = np.random.rand()
+    earnings = 0
+    if rand < 0.3:
+        earnings = int(np.floor(np.max([np.random.normal(loc=150,scale=150,size=(1))[0],0])))
+        add_log_message(f"You stole some packages on someones porch were able to sell them for ${earnings}")
+    if rand < 0.6:
+        earnings = int(np.floor(np.max([np.random.normal(loc=25,scale=10,size=(1))[0],0])))
+        add_log_message(f"You mugged some random guy and got ${earnings}")
+    if rand < 1.0:
+        earnings = int(np.floor(np.max([np.random.normal(loc=2,scale=1,size=(1))[0],0])))
+        add_log_message(f"You stole some candy from a baby and flipped it for ${earnings}")
+    sim.money += earnings
+    sim.stat_money_stolen += earnings
+
+def action_steal_high_risk(sim: Simulation):
+    rand = np.random.rand()
+    earnings = 0
+    if rand < 0.4:
+        earnings = int(np.floor(np.max([np.random.normal(loc=2000,scale=1000,size=(1))[0],0]))) # data taken from https://gta.fandom.com/wiki/Robberies
+        add_log_message(f"You robbed a gas station and got some money!!! +${earnings}!")
+    if rand < 0.7:
+        earnings = int(np.floor(np.max([np.random.normal(loc=37500,scale=10000,size=(1))[0],0]))) # data taken from https://payday.fandom.com/wiki/Loot
+        add_log_message(f"You robbed a bank and got some money!!! +${earnings}!")
+    if rand < 1.0:
+        earnings = int(np.floor(np.max([np.random.normal(loc=25000,scale=7500,size=(1))[0],0]))) # data taken from https://payday.fandom.com/wiki/Loot
+        add_log_message(f"You robbed a jewlery store and got some money!!! +${earnings}!")
+    sim.money += earnings
+    sim.stat_money_stolen += earnings
+
+def action_sleep(sim: Simulation):
+    add_log_message("You took an hour long nap")
+    sim.energy = np.min([sim.energy + 0.125, 1])
+
+def action_buy_food(sim: Simulation):
+    amnt_to_buy = np.clip(a=np.random.normal(loc=7,scale=3,size=(1))[0],a_min=0.0,a_max=7.0-sim.food)
+    cost = amnt_to_buy * 16.80 # average price of groceries/day in US according to my good friend chatgpt
+    add_log_message(f"You went to the store and bought {amnt_to_buy} food units of food for ${cost}.")
+    sim.food += amnt_to_buy
+    sim.money -= cost
+    sim.stat_expenditures -= cost
+    taxes = cost * 0.085 # data tax sourced from my good friend chatgpt
+    add_log_message(f"You paid the buying groceries tax and lost ${taxes}")
+    sim.money -= taxes
+    sim.stat_stolen_from -= taxes
+
+
+def action_do_nothing(sim: Simulation):
+    add_log_message(np.random.choice([
+        "You sat and did nothing",
+        "You clapped your hands and bounced up and down",
+        "You did a little dance",
+        "You thought about something better to do",
+        "You thought about what you'll do with the money you win when you strike it big",
+        "You got bored",
+        "You thought about nothing in particular",
+        "You twirled around",
+        "You made a bunch of funny noises with your mouth",
+        ]))
+
+def action_go_gambling(tickets = 1, grand_prize = 3000000):
 
     prize_money = 0
     odds_chart = [row[0] for row in outcomes_chart]
@@ -95,7 +180,6 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000, ticket_cost = 5):
     
     outcomes = []
     for i in range(tickets):
-        prize_money -= ticket_cost
         if total_outcomes <= 0:
             break
         r = np.random.randint(0, total_outcomes)
@@ -119,6 +203,33 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000, ticket_cost = 5):
 
     return prize_money
 
+# arrays once again. 
+# [0] - weight function (must be deterministic)
+# [1] - action function
+actions = [
+    [lambda sim: 1.0, action_do_nothing],
+    [lambda sim: 7.0-sim.food, action_buy_food],
+    [lambda sim: 1000 if sim.hunger <= 0.66 and sim.food > 0 else 0, action_eat_food],
+    [lambda sim: np.max([0,(sim.energy-0.7) * -400]), action_sleep],
+    [lambda sim: 0.5 + np.max([0,sim.money * -1]), action_work],
+    [lambda sim: np.max([0,(sim.money+550) * -0.5]), action_steal_low_risk],
+    [lambda sim: np.max([0,(sim.money+2000) * -0.25]), action_steal_high_risk],
+]
+
+def do_action():
+    global actions
+    global current_simulation
+    total = 0.0
+    for action in actions:
+        total += action[0](current_simulation)
+    rand = np.random.rand() * total
+    n = 0
+    for action in actions:
+        n += action[0](current_simulation)
+        if (rand < n):
+            action[1](current_simulation)
+            break
+
 status_box = tk.Text(root, height=10, width=45, font=("Courier New", 12), bg="#ffffff", fg="black", insertbackground="white")
 
 def disable_status_input(event):
@@ -132,7 +243,18 @@ def redraw_status_box():
     status_box.config(state=tk.NORMAL)
     status_box.delete(1.0, tk.END)
     status_box.insert(tk.END, f"Day {current_simulation.day} {current_simulation.hour}h" + "\n")
-    status_box.insert(tk.END, f"${current_simulation.money}" + "\n")
+    status_box.insert(tk.END, f"-POSSESIONS-" + "\n")
+    status_box.insert(tk.END, f"MONEY : ${current_simulation.money}" + "\n")
+    status_box.insert(tk.END, f"FOOD  : {current_simulation.food}" + "\n")
+    status_box.insert(tk.END, f"-ATTRIBUTES-" + "\n")
+    status_box.insert(tk.END, f"ENERGY: {current_simulation.energy}" + "\n")
+    status_box.insert(tk.END, f"HUNGER: {current_simulation.hunger}" + "\n")
+    status_box.insert(tk.END, f"-STATISTICS-" + "\n")
+    status_box.insert(tk.END, f"EARNINGS FROM GAMBLING: ${current_simulation.stat_money_earned_by_gambling}" + "\n")
+    status_box.insert(tk.END, f"EARNINGS FROM WORKING: ${current_simulation.stat_money_earned_by_working}" + "\n")
+    status_box.insert(tk.END, f"EARNINGS FROM STEALING: ${current_simulation.stat_money_stolen}" + "\n")
+    status_box.insert(tk.END, f"EXPENDITURES: ${current_simulation.stat_expenditures}" + "\n")
+    status_box.insert(tk.END, f"SEIZED BY GOVERNMENT: ${current_simulation.stat_stolen_from}" + "\n")
     status_box.config(state=tk.DISABLED)
 
 def export_log():
@@ -171,22 +293,37 @@ def run_simulation():
     
     while current_simulation.day < 30:
         current_simulation.hour += 1
+        # lets lose some stats!
+        current_simulation.energy -= 0.04
+        current_simulation.hunger -= 0.04
+        # do your hourly action
+        do_action()
+        # it's been a day?
         if current_simulation.hour == 24:
             current_simulation.hour = 0
             current_simulation.day += 1
             jackpot = np.floor(np.max([np.random.normal(loc=15000000,scale=10000000,size=(1))[0],7000000]))
             tickets = int(np.floor(np.max([np.random.normal(loc=5,scale=5,size=(1))[0],0])))
-            add_log_message(f"Lets go gambling!", "yellow")
-            add_log_message(f"The jackpot is ${jackpot}. You've decided to buy {tickets} tickets.", "yellow")
-            winnings = action_go_gambling(tickets,jackpot,5)
+            ticketcost = tickets * 5
+            add_log_message(f"[[[Lets go gambling!]]]", "yellow")
+            add_log_message(f"The jackpot is ${jackpot}. You've decided to buy {tickets} tickets for ${ticketcost}.", "yellow")
+            current_simulation.money -= ticketcost
+            current_simulation.stat_money_earned_by_gambling -= ticketcost
+            winnings = action_go_gambling(tickets,jackpot)
             current_simulation.money += winnings
+            current_simulation.stat_money_earned_by_gambling += winnings
             add_log_message(f"You won ${winnings}!", "yellow")
+            if winnings > 0:
+                gambling_tax = float(winnings) * 0.35
+                current_simulation.money -= gambling_tax
+                current_simulation.stat_stolen_from -= gambling_tax
+                add_log_message(f"You paid the winning tax and lost ${gambling_tax}!", "yellow")
             if current_simulation.money < 0:
                 interest = current_simulation.money * current_simulation.config_interest_rate
                 add_log_message(f"Your loan gained ${interest} in interest!", "yellow")
                 current_simulation.money += interest
 
-            add_log_message(f"Day {current_simulation.day}", "magenta")
+            add_log_message(f"[[[Day {current_simulation.day}]]]", "magenta")
         
         redraw_status_box()
         tksleep(0.01)
