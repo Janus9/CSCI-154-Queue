@@ -8,6 +8,7 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 from matplotlib.ticker import MultipleLocator # For setting Int tick intervals for Y axis of graph
 
 # Global Variables #
+queue = [] # Tracks customers for average wait time
 running = False 
 people = 0
 # parameters
@@ -19,14 +20,14 @@ time=0
 served=0 # number of people served
 ticks=0 # ticks of program for timing
 serving = False # is someone being served
-total_wait_time = 0 # cumulative wait time (for average wait time)
+total_wait_ticks= 0 # cumulative wait time (for average wait time)
 #plot data
 people_data = [0]
 time_data = [0]
 
 # called by reset button
 def reset():
-    global people,service_delay,time,served,people_data,time_data,ticks
+    global people,service_delay,time,served,people_data,time_data,ticks,total_wait_ticks, queue,serving
     people = 0
     service_delay = 0
     time=0
@@ -34,14 +35,16 @@ def reset():
     people_data = [0]
     time_data = [0]
     ticks=0
-    average_wait_time = 0
+    total_wait_ticks = 0
+    queue = []
+    serving = False
     update_plot()
     draw()
 
 def handleStartStop(startstopbutton):
     global running
     update_params()  
-    if (param_spawn_chance > 0 and param_service_time_min > 0 and param_service_time_max > 0): # can't have 0 values
+    if (param_spawn_chance >= 0 and param_service_time_min > 0 and param_service_time_max > 0): # can't have 0 values
         running = not running
         if running:
             startstopbutton.config(text="Stop")
@@ -129,7 +132,8 @@ def update_params():
 def update_text():
     global people,time,service_delay
     if (served > 0):
-        average_wait_time = total_wait_time/(served+1)
+        # Divide by # customers served to get an average, divide by 20 to get seconds from ticks
+        average_wait_time = (total_wait_ticks/served)/20
     else:
         average_wait_time = 0
     text_display.config(state="normal")
@@ -177,7 +181,7 @@ def process():
     global param_spawn_chance
     global served
     global serving
-    global total_wait_time
+    global total_wait_ticks
     if not running:
         return
     # Use serving Boolean for setting serve time, previously it auto "served" a customer since serve_time starts at 0, so first customer had no wait
@@ -188,10 +192,14 @@ def process():
                 serving = False
                 people-=1
                 served+=1
+                # Every customer is queued with tick value they entered at, when they leave we add the difference to the total_wait_ticks to get an average wait time per customer
+                ticks_waited = queue.pop(0)
+                total_wait_ticks += ticks-ticks_waited
+                #print(ticks,"-",ticks_waited,"=",ticks-ticks_waited)
+                #print("\nTotal Wait Ticks:",total_wait_ticks)
         else:
             serving = True
-            service_delay = round(random.uniform(param_service_time_min,param_service_time_max)*20) # rng serve time
-            total_wait_time+=(service_delay/20)         
+            service_delay = round(random.uniform(param_service_time_min,param_service_time_max)*20) # rng serve time    
 
 # Use ticks to keep simulation consistently timed, it doesnt actually run 1-1 with real life due to added runtime but its simulated time is consistent
 def loop():
@@ -206,6 +214,7 @@ def loop():
             # spawn customer rng
             if random.random() <= param_spawn_chance:
                 people += 1
+                queue.append(ticks)
         ticks+=1
     root.after(50, loop) # 20 ticks/s 
 
