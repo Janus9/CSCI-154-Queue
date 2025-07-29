@@ -118,7 +118,7 @@ def action_work(sim: Simulation):
 
 def action_steal_low_risk(sim: Simulation):
     global you_lose
-    if np.random.rand() > 0.85:
+    if np.random.rand() > 0.95:
         you_lose = True
         add_log_message(f"You tried to rob someone but they shot you in the face. YOU DIED", "red")
         return
