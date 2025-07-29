@@ -153,7 +153,7 @@ def action_buy_food(sim: Simulation):
     sim.food += amnt_to_buy
     sim.money -= cost
     sim.stat_expenditures -= cost
-    taxes = cost * 0.085 # data tax sourced from my good friend chatgpt
+    taxes = cost * 0.085 # data sourced from my good friend chatgpt
     add_log_message(f"You paid the buying groceries tax and lost ${taxes}")
     sim.money -= taxes
     sim.stat_stolen_from -= taxes
@@ -300,8 +300,15 @@ def run_simulation():
         do_action()
         # it's been a day?
         if current_simulation.hour == 24:
+            #inflation
+            inflation = current_simulation.money * 0.000074
+            current_simulation.money -= inflation
+            current_simulation.stat_stolen_from -= inflation
+            add_log_message(f"You paid the inflation tax and lost ${inflation}!", "yellow")
+            #time increment
             current_simulation.hour = 0
             current_simulation.day += 1
+            #lets go gambling!
             jackpot = np.floor(np.max([np.random.normal(loc=15000000,scale=10000000,size=(1))[0],7000000]))
             tickets = int(np.floor(np.max([np.random.normal(loc=5,scale=5,size=(1))[0],0])))
             ticketcost = tickets * 5
