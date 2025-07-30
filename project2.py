@@ -10,7 +10,7 @@ you_lose = False
 class Simulation:
     def __init__(self):
         self.config_interest_rate = 0.005
-        self.config_tickets_mean = 50
+        self.config_tickets_mean = 10
         self.config_tickets_scale = 5
 
         self.money = 110.0
@@ -39,7 +39,7 @@ label = tk.Label(root, text="Welcome to the Gambling Simulator!", font=("Times N
 
 output_label = tk.Label(root, text="", font=("Times New Roman", 12))
 
-input_label = tk.Label(root, text="Number of tickets to buy:", font=("Times New Roman", 12))
+input_label = tk.Label(root, text="num_tickets,jackpot,iterations", font=("Times New Roman", 12))
 input_textbox = tk.Entry(root, font=("Times New Roman", 12), width=20)
 
 console_log = tk.Text(root, height=30, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
@@ -295,12 +295,8 @@ export_frame = tk.Frame(root)
 export_log_btn = tk.Button(button_frame, text="Export Log", font=("Times New Roman", 12), command=export_log)
 export_person_btn = tk.Button(export_frame, text="Export Person", font=("Times New Roman", 12))
 
-def run_simulation_2():
+def run_simulation_2(input_tickets = 1, input_jackpot = 30000000, input_iterations = 1, silent = False):
     try:
-        input_tickets = 1
-        input_jackpot = 30000000
-        input_iterations = 1
-
         input_values = input_textbox.get().strip().split(',')
         if len(input_values) >= 1 and input_values[0].strip():
             input_tickets = int(float(input_values[0].strip()))
@@ -321,11 +317,14 @@ def run_simulation_2():
         avg_prize = total_prize / input_iterations
         net_gain = total_prize - total_cost
         avg_net_gain = net_gain / input_iterations
-        roi = net_gain / total_cost if total_cost > 0 else 0
+        roi = (total_prize / total_cost) - 1 if total_cost > 0 else -1
         
-        add_log_message(f"Average prize per iteration: ${avg_prize:.2f}", "cyan")
-        add_log_message(f"Average net gain per iteration: ${avg_net_gain:.2f}", "cyan")
-        add_log_message(f"Average ROI: {roi:.4f}", "cyan")
+        if not silent:
+            add_log_message(f"Average prize per iteration: ${avg_prize:.2f}", "cyan")
+            add_log_message(f"Average net gain per iteration: ${avg_net_gain:.2f}", "cyan")
+            add_log_message(f"Average ROI: {roi:.4f}", "cyan")
+        
+        return roi
     except ValueError:
         add_log_message("Error: Please enter valid numbers in the textbox!", "red")
         return
@@ -429,5 +428,15 @@ output_label.pack(pady=0)
 status_box.pack(pady=0)
 console_log.pack(pady=0)
 
+#jackpots = [10,7000000,30000000,1000000000]
+#tickets_bought = [1,10,1000,1000000]
+#array = [[0 for _ in range(4)] for _ in range(4)]
+#
+#for j in range(4):
+#    for t in range(4):
+#        print(j,t)
+#        array[j][t] = run_simulation_2(tickets_bought[t],jackpots[j],100,True)
+#
+#print(array)
 
 root.mainloop()
