@@ -39,6 +39,9 @@ label = tk.Label(root, text="Welcome to the Gambling Simulator!", font=("Times N
 
 output_label = tk.Label(root, text="", font=("Times New Roman", 12))
 
+input_label = tk.Label(root, text="Number of tickets to buy:", font=("Times New Roman", 12))
+input_textbox = tk.Entry(root, font=("Times New Roman", 12), width=20)
+
 console_log = tk.Text(root, height=30, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
 
 def disable_console_input(event):
@@ -186,7 +189,7 @@ def action_do_nothing(sim: Simulation):
         "You made a bunch of funny noises with your mouth",
         ]))
 
-def action_go_gambling(tickets = 1, grand_prize = 3000000):
+def action_go_gambling(tickets = 1, grand_prize = 3000000, silent = False):
 
     prize_money = 0
     odds_chart = [row[0] for row in outcomes_chart]
@@ -206,12 +209,13 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000):
                 # not so sure about if this is how prize splitting works -josh
                 shared = outcomes_chart[idx][2] > 0 and (outcomes_chart[idx][3] > np.random.rand())
                 earnings = outcomes_chart[idx][1] + outcomes_chart[idx][2] * grand_prize * (0.5 if shared else 1)
-                message = outcomes_chart[idx][4]
-                if shared:
-                    message += " Some other loser also won the jackpot, so they steal half of it!"
-                if earnings > 0:
-                    message += f" You won ${earnings}."
-                add_log_message(message, "red" if earnings == 0 else "green")
+                if not silent:
+                    message = outcomes_chart[idx][4]
+                    if shared:
+                        message += " Some other loser also won the jackpot, so they steal half of it!"
+                    if earnings > 0:
+                        message += f" You won ${earnings}."
+                    add_log_message(message, "red" if earnings == 0 else "green")
                 prize_money += earnings
                 break
 
@@ -286,9 +290,45 @@ button_frame = tk.Frame(root)
 generate_btn = tk.Button(button_frame, text="Generate Person", font=("Times New Roman", 12))
 load_btn = tk.Button(button_frame, text="Load Person", font=("Times New Roman", 12))
 start_btn = tk.Button(button_frame, text="Run Simulation", font=("Times New Roman", 12))
+start_btn2 = tk.Button(button_frame, text="Simulate ticket buying", font=("Times New Roman", 12))
 export_frame = tk.Frame(root)
 export_log_btn = tk.Button(button_frame, text="Export Log", font=("Times New Roman", 12), command=export_log)
 export_person_btn = tk.Button(export_frame, text="Export Person", font=("Times New Roman", 12))
+
+def run_simulation_2():
+    try:
+        input_tickets = 1
+        input_jackpot = 30000000
+        input_iterations = 1
+
+        input_values = input_textbox.get().strip().split(',')
+        if len(input_values) >= 1 and input_values[0].strip():
+            input_tickets = int(float(input_values[0].strip()))
+        if len(input_values) >= 2 and input_values[1].strip():
+            input_jackpot = int(input_values[1].strip())
+        if len(input_values) >= 3 and input_values[2].strip():
+            input_iterations = int(float(input_values[2].strip()))
+            
+        add_log_message(f"Lets go gambling {input_iterations} times!", "yellow")
+        
+        total_prize = 0
+        total_cost = input_tickets * 5 * input_iterations
+        
+        for i in range(input_iterations):
+            prize = action_go_gambling(input_tickets, input_jackpot, True)
+            total_prize += prize
+            
+        avg_prize = total_prize / input_iterations
+        net_gain = total_prize - total_cost
+        avg_net_gain = net_gain / input_iterations
+        roi = net_gain / total_cost if total_cost > 0 else 0
+        
+        add_log_message(f"Average prize per iteration: ${avg_prize:.2f}", "cyan")
+        add_log_message(f"Average net gain per iteration: ${avg_net_gain:.2f}", "cyan")
+        add_log_message(f"Average ROI: {roi:.4f}", "cyan")
+    except ValueError:
+        add_log_message("Error: Please enter valid numbers in the textbox!", "red")
+        return
 
 def run_simulation():
     global current_simulation
@@ -298,6 +338,7 @@ def run_simulation():
     generate_btn.config(state=tk.DISABLED)
     load_btn.config(state=tk.DISABLED)
     start_btn.config(state=tk.DISABLED)
+    start_btn2.config(state=tk.DISABLED)
     export_log_btn.config(state=tk.DISABLED)
     export_person_btn.config(state=tk.DISABLED)
 
@@ -366,18 +407,23 @@ def run_simulation():
     generate_btn.config(state=tk.NORMAL)
     load_btn.config(state=tk.NORMAL)
     start_btn.config(state=tk.NORMAL)
+    start_btn2.config(state=tk.NORMAL)
     export_log_btn.config(state=tk.NORMAL)
     export_person_btn.config(state=tk.NORMAL)
 
 start_btn.config(command=run_simulation)
+start_btn2.config(command=run_simulation_2)
 
 # --- PACK ALL WIDGETS AT THE BOTTOM ---
 label.pack(pady=5)
+input_label.pack(pady=2)
+input_textbox.pack(pady=2)
 button_frame.pack(pady=5)
 #generate_btn.pack(side=tk.LEFT, padx=5)
 #load_btn.pack(side=tk.LEFT, padx=5)
 export_log_btn.pack(side=tk.LEFT, padx=5)
 start_btn.pack(side=tk.LEFT, padx=5)
+start_btn2.pack(side=tk.LEFT, padx=5)
 #export_person_btn.pack(side=tk.LEFT, padx=5)
 output_label.pack(pady=0)
 status_box.pack(pady=0)
