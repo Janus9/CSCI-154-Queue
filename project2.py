@@ -97,7 +97,7 @@ outcomes_chart = [
     [5460, 0, 0.000003, 0.000131832, "Regular Four."],
     [210, 0, 0.00005, 0.000005070, "Mega Four."],
     [26, 0, 0.0005, 0.000000628, "Regular Five."],
-    [1, 0, 1, 0.000000024, "ULTRA MEGA GRAND PRIZE!!!!!!!"],
+    [1, 0, 1, 0.000000024, "WIN!!!"],
 ]
 
 def action_eat_food(sim: Simulation):
@@ -118,7 +118,7 @@ def action_work(sim: Simulation):
 
 def action_steal_low_risk(sim: Simulation):
     global you_lose
-    if np.random.rand() > 0.95:
+    if np.random.rand() > 0.998:
         you_lose = True
         add_log_message(f"You tried to rob someone but they shot you in the face. YOU DIED", "red")
         return
