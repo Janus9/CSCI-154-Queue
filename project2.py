@@ -3,9 +3,13 @@ import numpy as np
 import os
 import datetime
 
+you_lose = False
+
 class Simulation:
     def __init__(self):
         self.config_interest_rate = 0.005
+        self.config_tickets_mean = 10
+        self.config_tickets_scale = 5
 
         self.money = 110.0
         self.debt = 0.0
@@ -33,7 +37,10 @@ label = tk.Label(root, text="Welcome to the Gambling Simulator!", font=("Times N
 
 output_label = tk.Label(root, text="", font=("Times New Roman", 12))
 
-console_log = tk.Text(root, height=20, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
+input_label = tk.Label(root, text="num_tickets,jackpot,iterations", font=("Times New Roman", 12))
+input_textbox = tk.Entry(root, font=("Times New Roman", 12), width=20)
+
+console_log = tk.Text(root, height=30, width=45, font=("Courier New", 12), bg="#0a192f", fg="white", insertbackground="white")
 
 def disable_console_input(event):
     return "break"
@@ -91,7 +98,7 @@ outcomes_chart = [
     [5460, 0, 0.000003, 0.000131832, "Regular Four."],
     [210, 0, 0.00005, 0.000005070, "Mega Four."],
     [26, 0, 0.0005, 0.000000628, "Regular Five."],
-    [1, 0, 1, 0.000000024, "ULTRA MEGA GRAND PRIZE!!!!!!!"],
+    [1, 0, 1, 0.000000024, "WIN!!!"],
 ]
 
 def action_eat_food(sim: Simulation):
@@ -105,12 +112,17 @@ def action_work(sim: Simulation):
     add_log_message(f"You did some doordash deliveries and made ${earnings}!")
     sim.money += earnings
     sim.stat_money_earned_by_working += earnings
-    taxes = earnings * 0.037
+    taxes = earnings * 0.09
     add_log_message(f"You paid the working tax and lost ${taxes}")
     sim.money -= taxes
     sim.stat_stolen_from -= taxes
 
 def action_steal_low_risk(sim: Simulation):
+    global you_lose
+    if np.random.rand() > 0.998:
+        you_lose = True
+        add_log_message(f"You tried to rob someone but they shot you in the face. YOU DIED", "red")
+        return
     rand = np.random.rand()
     earnings = 0
     if rand < 0.3:
@@ -126,6 +138,11 @@ def action_steal_low_risk(sim: Simulation):
     sim.stat_money_stolen += earnings
 
 def action_steal_high_risk(sim: Simulation):
+    global you_lose
+    if np.random.rand() > 0.01:
+        you_lose = True
+        add_log_message(f"You tried to commit a robbery with a deadly weapon and were arrested. GAME OVER", "red")
+        return
     rand = np.random.rand()
     earnings = 0
     if rand < 0.4:
@@ -170,7 +187,7 @@ def action_do_nothing(sim: Simulation):
         "You made a bunch of funny noises with your mouth",
         ]))
 
-def action_go_gambling(tickets = 1, grand_prize = 3000000):
+def action_go_gambling(tickets = 1, grand_prize = 3000000, silent = False):
 
     prize_money = 0
     odds_chart = [row[0] for row in outcomes_chart]
@@ -190,12 +207,13 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000):
                 # this is exactly how prize splitting works -josh
                 shared = outcomes_chart[idx][2] > 0 and (outcomes_chart[idx][3] > np.random.rand())
                 earnings = outcomes_chart[idx][1] + outcomes_chart[idx][2] * grand_prize * (0.5 if shared else 1)
-                message = outcomes_chart[idx][4]
-                if shared:
-                    message += " Some other loser also won the jackpot, so they steal half of it!"
-                if earnings > 0:
-                    message += f" You won ${earnings}."
-                add_log_message(message, "red" if earnings == 0 else "green")
+                if not silent:
+                    message = outcomes_chart[idx][4]
+                    if shared:
+                        message += " Some other loser also won the jackpot, so they steal half of it!"
+                    if earnings > 0:
+                        message += f" You won ${earnings}."
+                    add_log_message(message, "red" if earnings == 0 else "green")
                 prize_money += earnings
                 break
 
@@ -207,11 +225,11 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000):
 actions = [
     [lambda sim: 1.0, action_do_nothing],
     [lambda sim: 7.0-sim.food, action_buy_food],
-    [lambda sim: 1000 if sim.hunger <= 0.66 and sim.food > 0 else 0, action_eat_food],
+    [lambda sim: 100 if sim.hunger <= 0.66 and sim.food > 0 else 0, action_eat_food],
     [lambda sim: np.max([0,(sim.energy-0.7) * -400]), action_sleep],
     [lambda sim: 0.5 + np.max([0,sim.money * -1]), action_work],
-    [lambda sim: np.max([0,(sim.money+550) * -0.5]), action_steal_low_risk],
-    [lambda sim: np.max([0,(sim.money+2000) * -0.25]), action_steal_high_risk],
+    [lambda sim: np.max([0,(sim.money) * -0.5]), action_steal_low_risk],
+    [lambda sim: np.max([0,(sim.money+1000) * -0.25]), action_steal_high_risk],
 ]
 
 def do_action():
@@ -228,7 +246,7 @@ def do_action():
             action[1](current_simulation)
             break
 
-status_box = tk.Text(root, height=10, width=45, font=("Courier New", 12), bg="#ffffff", fg="black", insertbackground="white")
+status_box = tk.Text(root, height=15, width=45, font=("Courier New", 12), bg="#ffffff", fg="black", insertbackground="white")
 
 def disable_status_input(event):
     return "break"
@@ -270,16 +288,54 @@ button_frame = tk.Frame(root)
 generate_btn = tk.Button(button_frame, text="Generate Person", font=("Times New Roman", 12))
 load_btn = tk.Button(button_frame, text="Load Person", font=("Times New Roman", 12))
 start_btn = tk.Button(button_frame, text="Run Simulation", font=("Times New Roman", 12))
+start_btn2 = tk.Button(button_frame, text="Simulate ticket buying", font=("Times New Roman", 12))
 export_frame = tk.Frame(root)
-export_log_btn = tk.Button(export_frame, text="Export Log", font=("Times New Roman", 12), command=export_log)
+export_log_btn = tk.Button(button_frame, text="Export Log", font=("Times New Roman", 12), command=export_log)
 export_person_btn = tk.Button(export_frame, text="Export Person", font=("Times New Roman", 12))
+
+def run_simulation_2(input_tickets = 1, input_jackpot = 30000000, input_iterations = 1, silent = False):
+    try:
+        input_values = input_textbox.get().strip().split(',')
+        if len(input_values) >= 1 and input_values[0].strip():
+            input_tickets = int(float(input_values[0].strip()))
+        if len(input_values) >= 2 and input_values[1].strip():
+            input_jackpot = int(input_values[1].strip())
+        if len(input_values) >= 3 and input_values[2].strip():
+            input_iterations = int(float(input_values[2].strip()))
+            
+        add_log_message(f"Lets go gambling {input_iterations} times!", "yellow")
+        
+        total_prize = 0
+        total_cost = input_tickets * 5 * input_iterations
+        
+        for i in range(input_iterations):
+            prize = action_go_gambling(input_tickets, input_jackpot, True)
+            total_prize += prize
+            
+        avg_prize = total_prize / input_iterations
+        net_gain = total_prize - total_cost
+        avg_net_gain = net_gain / input_iterations
+        roi = (total_prize / total_cost) - 1 if total_cost > 0 else -1
+        
+        if not silent:
+            add_log_message(f"Average prize per iteration: ${avg_prize:.2f}", "cyan")
+            add_log_message(f"Average net gain per iteration: ${avg_net_gain:.2f}", "cyan")
+            add_log_message(f"Average ROI: {roi:.4f}", "cyan")
+        
+        return roi
+    except ValueError:
+        add_log_message("Error: Please enter valid numbers in the textbox!", "red")
+        return
 
 def run_simulation():
     global current_simulation
+    global you_lose
+    you_lose = False
     # Disable all buttons
     generate_btn.config(state=tk.DISABLED)
     load_btn.config(state=tk.DISABLED)
     start_btn.config(state=tk.DISABLED)
+    start_btn2.config(state=tk.DISABLED)
     export_log_btn.config(state=tk.DISABLED)
     export_person_btn.config(state=tk.DISABLED)
 
@@ -289,13 +345,11 @@ def run_simulation():
     add_log_message("Hello world!")
     
     
-    while current_simulation.day < 30:
+    while current_simulation.day < 30 and you_lose == False:
         current_simulation.hour += 1
         # lets lose some stats!
         current_simulation.energy -= 0.04
         current_simulation.hunger -= 0.04
-        # do your hourly action
-        do_action()
         # it's been a day?
         if current_simulation.hour == 24:
             #inflation
@@ -308,7 +362,7 @@ def run_simulation():
             current_simulation.day += 1
             #lets go gambling!
             jackpot = np.floor(np.max([np.random.normal(loc=15000000,scale=10000000,size=(1))[0],7000000]))
-            tickets = int(np.floor(np.max([np.random.normal(loc=5,scale=5,size=(1))[0],0])))
+            tickets = int(np.floor(np.max([np.random.normal(loc=current_simulation.config_tickets_mean,scale=current_simulation.config_tickets_scale,size=(1))[0],0])))
             ticketcost = tickets * 5
             add_log_message(f"[[[Lets go gambling!]]]", "yellow")
             add_log_message(f"The jackpot is ${jackpot}. You've decided to buy {tickets} tickets for ${ticketcost}.", "yellow")
@@ -330,6 +384,16 @@ def run_simulation():
 
             add_log_message(f"[[[Day {current_simulation.day}]]]", "magenta")
         
+        # do your hourly action
+        do_action()
+        # potentially die
+        if current_simulation.hunger < -4.00:
+            you_lose = True
+            add_log_message(f"You died of starvation", "red")
+        if current_simulation.energy < -4.00:
+            you_lose = True
+            add_log_message(f"You died of exhaustion", "red")
+        
         redraw_status_box()
         tksleep(0.01)
         
@@ -340,23 +404,37 @@ def run_simulation():
     generate_btn.config(state=tk.NORMAL)
     load_btn.config(state=tk.NORMAL)
     start_btn.config(state=tk.NORMAL)
+    start_btn2.config(state=tk.NORMAL)
     export_log_btn.config(state=tk.NORMAL)
     export_person_btn.config(state=tk.NORMAL)
 
 start_btn.config(command=run_simulation)
+start_btn2.config(command=run_simulation_2)
 
 # --- PACK ALL WIDGETS AT THE BOTTOM ---
-label.pack(pady=60)
+label.pack(pady=5)
+input_label.pack(pady=2)
+input_textbox.pack(pady=2)
 button_frame.pack(pady=5)
 #generate_btn.pack(side=tk.LEFT, padx=5)
 #load_btn.pack(side=tk.LEFT, padx=5)
-start_btn.pack(side=tk.LEFT, padx=5)
-export_frame.pack(pady=5)
 export_log_btn.pack(side=tk.LEFT, padx=5)
+start_btn.pack(side=tk.LEFT, padx=5)
+start_btn2.pack(side=tk.LEFT, padx=5)
 #export_person_btn.pack(side=tk.LEFT, padx=5)
-output_label.pack(pady=5)
-status_box.pack(pady=10)
-console_log.pack(pady=10)
+output_label.pack(pady=0)
+status_box.pack(pady=0)
+console_log.pack(pady=0)
 
+#jackpots = [10,7000000,30000000,1000000000]
+#tickets_bought = [1,10,1000,1000000]
+#array = [[0 for _ in range(4)] for _ in range(4)]
+#
+#for j in range(4):
+#    for t in range(4):
+#        print(j,t)
+#        array[j][t] = run_simulation_2(tickets_bought[t],jackpots[j],100,True)
+#
+#print(array)
 
 root.mainloop()
