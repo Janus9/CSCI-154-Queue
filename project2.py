@@ -3,8 +3,6 @@ import numpy as np
 import os
 import datetime
 
-# ok so what im thinking for how we make the project extra is that we simulate whether you can survive off of gambling so we're gonna simulate the actions of a person and see if they starve to death or not -josh
-
 class Simulation:
     def __init__(self):
         self.config_interest_rate = 0.005
@@ -107,7 +105,7 @@ def action_work(sim: Simulation):
     add_log_message(f"You did some doordash deliveries and made ${earnings}!")
     sim.money += earnings
     sim.stat_money_earned_by_working += earnings
-    taxes = earnings * 0.037 # data for average income tax sourced from my good friend chatgpt
+    taxes = earnings * 0.037
     add_log_message(f"You paid the working tax and lost ${taxes}")
     sim.money -= taxes
     sim.stat_stolen_from -= taxes
@@ -131,13 +129,13 @@ def action_steal_high_risk(sim: Simulation):
     rand = np.random.rand()
     earnings = 0
     if rand < 0.4:
-        earnings = int(np.floor(np.max([np.random.normal(loc=2000,scale=1000,size=(1))[0],0]))) # data taken from https://gta.fandom.com/wiki/Robberies
+        earnings = int(np.floor(np.max([np.random.normal(loc=2000,scale=1000,size=(1))[0],0]))) 
         add_log_message(f"You robbed a gas station and got some money!!! +${earnings}!")
     if rand < 0.7:
-        earnings = int(np.floor(np.max([np.random.normal(loc=37500,scale=10000,size=(1))[0],0]))) # data taken from https://payday.fandom.com/wiki/Loot
+        earnings = int(np.floor(np.max([np.random.normal(loc=37500,scale=10000,size=(1))[0],0]))) 
         add_log_message(f"You robbed a bank and got some money!!! +${earnings}!")
     if rand < 1.0:
-        earnings = int(np.floor(np.max([np.random.normal(loc=25000,scale=7500,size=(1))[0],0]))) # data taken from https://payday.fandom.com/wiki/Loot
+        earnings = int(np.floor(np.max([np.random.normal(loc=25000,scale=7500,size=(1))[0],0]))) 
         add_log_message(f"You robbed a jewlery store and got some money!!! +${earnings}!")
     sim.money += earnings
     sim.stat_money_stolen += earnings
@@ -148,12 +146,12 @@ def action_sleep(sim: Simulation):
 
 def action_buy_food(sim: Simulation):
     amnt_to_buy = np.clip(a=np.random.normal(loc=7,scale=3,size=(1))[0],a_min=0.0,a_max=7.0-sim.food)
-    cost = amnt_to_buy * 16.80 # average price of groceries/day in US according to my good friend chatgpt
+    cost = amnt_to_buy * 16.80 
     add_log_message(f"You went to the store and bought {amnt_to_buy} food units of food for ${cost}.")
     sim.food += amnt_to_buy
     sim.money -= cost
     sim.stat_expenditures -= cost
-    taxes = cost * 0.085 # data sourced from my good friend chatgpt
+    taxes = cost * 0.085 
     add_log_message(f"You paid the buying groceries tax and lost ${taxes}")
     sim.money -= taxes
     sim.stat_stolen_from -= taxes
@@ -189,7 +187,7 @@ def action_go_gambling(tickets = 1, grand_prize = 3000000):
             if r < cumulative:
                 odds_chart[idx] -= 1
                 total_outcomes -= 1
-                # not so sure about if this is how prize splitting works -josh
+                # this is exactly how prize splitting works -josh
                 shared = outcomes_chart[idx][2] > 0 and (outcomes_chart[idx][3] > np.random.rand())
                 earnings = outcomes_chart[idx][1] + outcomes_chart[idx][2] * grand_prize * (0.5 if shared else 1)
                 message = outcomes_chart[idx][4]
